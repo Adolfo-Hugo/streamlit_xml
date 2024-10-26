@@ -7,7 +7,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from dotenv import load_dotenv
 
 # Função para download de XML com barra de progresso atualizada em tempo real
 def download_xml(manual_keys, download_path):
@@ -31,8 +30,13 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # Inicializando o navegador
-    navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # Especificando a versão do ChromeDriver
+    try:
+        navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    except Exception as e:
+        st.error(f"Erro ao inicializar o navegador: {e}")
+        return
+
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
@@ -73,16 +77,9 @@ def download_xml(manual_keys, download_path):
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
-            # Renomeando o arquivo baixado
-            downloaded_file = max(
-                [f for f in os.listdir(download_path)], 
-                key=lambda x: os.path.getctime(os.path.join(download_path, x))
-            )
+            downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(
-                os.path.join(download_path, downloaded_file), 
-                os.path.join(download_path, new_file_name)
-            )
+            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
