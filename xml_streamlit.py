@@ -34,7 +34,7 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--disable-dev-shm-usage")
 
     # Baixar o ChromeDriver
-    chrome_driver_path = ChromeDriverManager().install()
+    chrome_driver_path = 'https://raw.githubusercontent.com/Adolfo-Hugo/streamlit_xml/main/drivers/chromedriver.exe'
     navegador = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
     
     link = "https://meudanfe.com.br"
