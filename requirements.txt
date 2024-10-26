@@ -1,6 +1,6 @@
 streamlit
 webdriver-manager
-selenium==4.18.1
+selenium
 seleniumbase
 python-dotenv
 python-time
