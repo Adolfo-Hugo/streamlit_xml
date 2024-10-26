@@ -7,6 +7,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from dotenv import load_dotenv
 
 # Função para download de XML com barra de progresso atualizada em tempo real
 def download_xml(manual_keys, download_path):
@@ -30,13 +31,7 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # Especificando a versão do ChromeDriver
-    try:
-        navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    except Exception as e:
-        st.error(f"Erro ao inicializar o navegador: {e}")
-        return
-
+    navegador = webdriver.Chrome(service=Service(), options=chrome_options)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
