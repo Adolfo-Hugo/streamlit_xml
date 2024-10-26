@@ -1,13 +1,19 @@
 import streamlit as st
 import os
 import time
-from webdriver_manager.chrome import ChromeDriverManager
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from dotenv import load_dotenv
+
+# Função para baixar o ChromeDriver
+def download_chromedriver(download_path):
+    chrome_driver_url = 'https://raw.githubusercontent.com/Adolfo-Hugo/streamlit_xml/main/drivers/chromedriver.exe'  # Link raw do ChromeDriver
+    response = requests.get(chrome_driver_url)
+    with open(download_path, 'wb') as f:
+        f.write(response.content)
 
 # Função para download de XML com barra de progresso atualizada em tempo real
 def download_xml(manual_keys, download_path):
@@ -17,6 +23,10 @@ def download_xml(manual_keys, download_path):
         st.session_state.current_index = 0
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
+
+    # Baixar o ChromeDriver
+    chrome_driver_path = os.path.join(download_path, 'chromedriver.exe')
+    download_chromedriver(chrome_driver_path)
 
     # Configuração do Chrome
     chrome_options = webdriver.ChromeOptions()
@@ -31,8 +41,9 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    #navegador = webdriver.Chrome(service=Service(), options=chrome_options)
-    navegador = webdriver.Chrome(executable_path='https://github.com/Adolfo-Hugo/streamlit_xml/blob/825ea14592c05a1eb374e403607a878a9ff49bff/chrome.exe', options=chrome_options)
+    # Inicializa o navegador com o ChromeDriver baixado
+    navegador = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
+    
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
