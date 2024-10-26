@@ -54,7 +54,7 @@ def main():
         }
         chrome_options.add_experimental_option("prefs", prefs)
         
-        navegador = webdriver.Chrome(service=Service(), options=chrome_options)
+        navegador = webdriver.Chrome(service=Service((ChromeDriverManager().install())), options=chrome_options)
         link = "https://meudanfe.com.br"
         navegador.maximize_window()
         navegador.get(link)
