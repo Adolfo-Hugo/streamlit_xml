@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import time
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -9,16 +10,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from dotenv import load_dotenv
 
-# Função para download de XML com barra de progresso atualizada em tempo real
-def download_xml(manual_keys, download_path):
-    if 'is_stopped' not in st.session_state:
-        st.session_state.is_stopped = False
-    if 'current_index' not in st.session_state:
-        st.session_state.current_index = 0
-    if 'files_saved' not in st.session_state:
-        st.session_state.files_saved = 0
-
-    # Configuração do Chrome
+# Função para configurar o driver com cache
+@st.cache_resource
+def get_driver(download_path):
+    # Configurações de preferências e opções do Chrome
     chrome_options = webdriver.ChromeOptions()
     prefs = {
         "download.default_directory": download_path,
@@ -30,8 +25,25 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # Criação do driver com ChromeDriverManager e ChromeType CHROMIUM
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()),
+        options=chrome_options
+    )
+    return driver
 
-    navegador = webdriver.Chrome(service=Service(), options=chrome_options)
+# Função para download de XML com barra de progresso atualizada em tempo real
+def download_xml(manual_keys, download_path):
+    if 'is_stopped' not in st.session_state:
+        st.session_state.is_stopped = False
+    if 'current_index' not in st.session_state:
+        st.session_state.current_index = 0
+    if 'files_saved' not in st.session_state:
+        st.session_state.files_saved = 0
+
+    # Obtenção do driver do cache
+    navegador = get_driver(download_path)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
@@ -72,6 +84,7 @@ def download_xml(manual_keys, download_path):
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
+            # Renomear o arquivo baixado para o nome da chave
             downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
             os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
