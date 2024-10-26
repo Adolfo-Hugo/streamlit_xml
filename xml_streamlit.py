@@ -17,16 +17,8 @@ def download_chromedriver(download_path):
 
 # Função para download de XML com barra de progresso atualizada em tempo real
 def download_xml(manual_keys, download_path):
-    if 'is_stopped' not in st.session_state:
-        st.session_state.is_stopped = False
-    if 'current_index' not in st.session_state:
-        st.session_state.current_index = 0
-    if 'files_saved' not in st.session_state:
-        st.session_state.files_saved = 0
-
-    # Baixar o ChromeDriver
-    chrome_driver_path = os.path.join(download_path, 'chromedriver.exe')
-    download_chromedriver(chrome_driver_path)
+    # Certifique-se de que o caminho de download existe
+    os.makedirs(download_path, exist_ok=True)
 
     # Configuração do Chrome
     chrome_options = webdriver.ChromeOptions()
@@ -41,8 +33,9 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    # Inicializa o navegador com o ChromeDriver baixado
-    navegador = webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
+    # Baixar o ChromeDriver
+    chrome_driver_path = ChromeDriverManager().install()
+    navegador = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
     
     link = "https://meudanfe.com.br"
     navegador.get(link)
