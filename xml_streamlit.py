@@ -30,12 +30,8 @@ def download_xml(manual_keys, download_path):
         "safebrowsing.enabled": True
     }
     chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-
-    # Desativado o modo headless para testar em modo visível
-    # chrome_options.add_argument("--headless")
 
     navegador = webdriver.Chrome(service=Service(), options=chrome_options)
     link = "https://meudanfe.com.br"
@@ -57,7 +53,7 @@ def download_xml(manual_keys, download_path):
             break
 
         try:
-            input_element = WebDriverWait(navegador, 10).until(
+            input_element = WebDriverWait(navegador, 15).until(
                 EC.presence_of_element_located((By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/input'))
             )
             input_element.send_keys(codigo_chave)
@@ -68,7 +64,7 @@ def download_xml(manual_keys, download_path):
             time.sleep(2)
 
             try:
-                botao_download = WebDriverWait(navegador, 5).until(
+                botao_download = WebDriverWait(navegador, 10).until(
                     EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[1]/div/div[2]/button[1]'))
                 )
                 botao_download.click()
@@ -81,17 +77,21 @@ def download_xml(manual_keys, download_path):
             # Verificar e copiar o arquivo baixado do diretório temporário para o final
             time.sleep(2)  # Esperar o download
             downloaded_file = max([f for f in os.listdir(temp_download_dir)], key=lambda x: os.path.getctime(os.path.join(temp_download_dir, x)))
-            st.write(f"Arquivo baixado encontrado: {downloaded_file}")
+            file_path = os.path.join(temp_download_dir, downloaded_file)
 
-            new_file_name = f"{codigo_chave}.xml"
-            shutil.move(os.path.join(temp_download_dir, downloaded_file), os.path.join(download_path, new_file_name))
-            st.write(f"Arquivo {new_file_name} movido para o caminho final: {download_path}")
+            if os.path.exists(file_path):
+                new_file_name = f"{codigo_chave}.xml"
+                shutil.move(file_path, os.path.join(download_path, new_file_name))
+                st.write(f"Arquivo {new_file_name} movido para o caminho final: {download_path}")
+            else:
+                st.error(f"Erro: o arquivo para a chave {codigo_chave} não foi encontrado após o download.")
+                continue
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
 
         except Exception as e:
-            st.error(f"Erro ao processar a chave {codigo_chave}: {e}")
+            st.error(f"Erro ao processar a chave {codigo_chave}: {str(e)}")
 
         # Atualizar barra de progresso e percentual
         progress_percentage = (i + 1) / len(chaves)
