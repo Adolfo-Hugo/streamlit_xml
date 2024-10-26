@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import time
 import tempfile
+import shutil
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -77,13 +78,13 @@ def download_xml(manual_keys, download_path):
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
-            # Verificar e renomear o arquivo baixado no diretório temporário
+            # Verificar e copiar o arquivo baixado do diretório temporário para o final
             time.sleep(2)  # Esperar o download
             downloaded_file = max([f for f in os.listdir(temp_download_dir)], key=lambda x: os.path.getctime(os.path.join(temp_download_dir, x)))
             st.write(f"Arquivo baixado encontrado: {downloaded_file}")
 
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(temp_download_dir, downloaded_file), os.path.join(download_path, new_file_name))
+            shutil.move(os.path.join(temp_download_dir, downloaded_file), os.path.join(download_path, new_file_name))
             st.write(f"Arquivo {new_file_name} movido para o caminho final: {download_path}")
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
