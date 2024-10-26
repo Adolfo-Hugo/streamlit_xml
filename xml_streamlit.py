@@ -1,23 +1,38 @@
+import streamlit as st
+import os
+import time
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from dotenv import load_dotenv
 
-# Configuração do Chrome
-chrome_options = webdriver.ChromeOptions()
-prefs = {
-    "download.default_directory": download_path,
-    "download.prompt_for_download": False,
-    "directory_upgrade": True,
-    "safebrowsing.enabled": True
-}
-chrome_options.add_experimental_option("prefs", prefs)
-chrome_options.add_argument("--headless")
-chrome_options.add_argument("--no-sandbox")
-chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--window-size=1920x1080")
+# Função para download de XML com barra de progresso atualizada em tempo real
+def download_xml(manual_keys, download_path):
+    if 'is_stopped' not in st.session_state:
+        st.session_state.is_stopped = False
+    if 'current_index' not in st.session_state:
+        st.session_state.current_index = 0
+    if 'files_saved' not in st.session_state:
+        st.session_state.files_saved = 0
 
-# Inicialize o Chrome com o ChromeDriverManager
-navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # Configuração do Chrome
+    chrome_options = webdriver.ChromeOptions()
+    prefs = {
+        "download.default_directory": download_path,
+        "download.prompt_for_download": False,
+        "directory_upgrade": True,
+        "safebrowsing.enabled": True
+    }
+    chrome_options.add_experimental_option("prefs", prefs)
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
 
+    # Inicializando o navegador
+    navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
@@ -58,9 +73,16 @@ navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), o
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
-            downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
+            # Renomeando o arquivo baixado
+            downloaded_file = max(
+                [f for f in os.listdir(download_path)], 
+                key=lambda x: os.path.getctime(os.path.join(download_path, x))
+            )
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+            os.rename(
+                os.path.join(download_path, downloaded_file), 
+                os.path.join(download_path, new_file_name)
+            )
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
