@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import time
+import tempfile
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -18,18 +19,21 @@ def download_xml(manual_keys, download_path):
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
 
-    # Configuração do Chrome
+    # Configuração do Chrome para download em um diretório temporário
+    temp_download_dir = tempfile.gettempdir()
     chrome_options = webdriver.ChromeOptions()
     prefs = {
-        "download.default_directory": download_path,
+        "download.default_directory": temp_download_dir,
         "download.prompt_for_download": False,
         "directory_upgrade": True,
         "safebrowsing.enabled": True
     }
     chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Desativado o modo headless para testar em modo visível
+    # chrome_options.add_argument("--headless")
 
     navegador = webdriver.Chrome(service=Service(), options=chrome_options)
     link = "https://meudanfe.com.br"
@@ -72,9 +76,14 @@ def download_xml(manual_keys, download_path):
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
-            downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
+            # Verificar e renomear o arquivo baixado no diretório temporário
+            time.sleep(2)  # Esperar o download
+            downloaded_file = max([f for f in os.listdir(temp_download_dir)], key=lambda x: os.path.getctime(os.path.join(temp_download_dir, x)))
+            st.write(f"Arquivo baixado encontrado: {downloaded_file}")
+
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+            os.rename(os.path.join(temp_download_dir, downloaded_file), os.path.join(download_path, new_file_name))
+            st.write(f"Arquivo {new_file_name} movido para o caminho final: {download_path}")
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
