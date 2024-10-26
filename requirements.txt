@@ -1,7 +1,6 @@
 streamlit
-webdriver-manager
-selenium
 seleniumbase
+webdriver-manager
 python-dotenv
 python-time
 
