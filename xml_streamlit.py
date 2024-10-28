@@ -1,13 +1,10 @@
 import streamlit as st
 import os
 import time
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+import undetected_chromedriver as uc  # Importando undetected_chromedriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from dotenv import load_dotenv
 
 # Função para download de XML com barra de progresso atualizada em tempo real
 def download_xml(manual_keys, download_path):
@@ -18,8 +15,8 @@ def download_xml(manual_keys, download_path):
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
 
-    # Configuração do Chrome
-    chrome_options = webdriver.ChromeOptions()
+    # Configuração do Chrome com undetected_chromedriver
+    chrome_options = uc.ChromeOptions()
     prefs = {
         "download.default_directory": download_path,
         "download.prompt_for_download": False,
@@ -31,7 +28,7 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    navegador = webdriver.Chrome(service=Service(), options=chrome_options)
+    navegador = uc.Chrome(options=chrome_options)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
