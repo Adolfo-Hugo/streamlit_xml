@@ -16,7 +16,7 @@ def download_xml(manual_keys, download_path):
         st.session_state.files_saved = 0
 
     # Caminho para o ChromeDriver armazenado no GitHub
-    chrome_driver_path = os.path.join(os.getcwd(), 'chrome.exe')
+    chrome_driver_path = os.path.join(os.getcwd(), 'https://github.com/Adolfo-Hugo/streamlit_xml/blob/main/chrome.exe')
     os.chmod(chrome_driver_path, 0o755)  # Tornar o arquivo executável
 
     # Configuração do Chrome com undetected_chromedriver
