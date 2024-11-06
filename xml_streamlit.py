@@ -15,6 +15,10 @@ def download_xml(manual_keys, download_path):
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
 
+    # Caminho para o ChromeDriver armazenado no GitHub
+    chrome_driver_path = os.path.join(os.getcwd(), 'chrome.exe')
+    os.chmod(chrome_driver_path, 0o755)  # Tornar o arquivo executável
+
     # Configuração do Chrome com undetected_chromedriver
     chrome_options = uc.ChromeOptions()
     prefs = {
@@ -28,7 +32,7 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    navegador = uc.Chrome(options=chrome_options)
+    navegador = uc.Chrome(driver_executable_path=chrome_driver_path, options=chrome_options)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
