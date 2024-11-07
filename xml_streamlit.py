@@ -76,9 +76,12 @@ def download_xml(manual_keys, download_path):
 
             downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
-
+            new_file_path = os.path.join(download_path, new_file_name)  # Define o caminho completo do novo arquivo
+            os.rename(os.path.join(download_path, downloaded_file), new_file_path)
+            
+            # Adiciona o caminho do novo arquivo à lista
             st.session_state.downloaded_files.append(new_file_path)
+
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
