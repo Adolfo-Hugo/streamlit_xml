@@ -5,3 +5,5 @@ python-dotenv
 python-time
 undetected-chromedriver
 
+streamlit==1.24.0           # versão do Streamlit para a interface
+playwright==1.39.0          # versão para automação do navegador
