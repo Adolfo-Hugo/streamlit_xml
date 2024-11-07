@@ -29,11 +29,11 @@ def download_xml(manual_keys, download_path):
         "safebrowsing.enabled": True
     }
     chrome_options.add_experimental_option("prefs", prefs)
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-
+    navegador = webdriver.Chrome(options=chrome_options)
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
@@ -56,7 +56,6 @@ def download_xml(manual_keys, download_path):
             input_element = WebDriverWait(navegador, 10).until(
                 EC.presence_of_element_located((By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/input'))
             )
-            input_element.clear()  # Limpa antes de inserir o valor para evitar problemas
             input_element.send_keys(codigo_chave)
             time.sleep(2)
 
@@ -65,23 +64,21 @@ def download_xml(manual_keys, download_path):
             time.sleep(2)
 
             try:
-                botao_download = WebDriverWait(navegador, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, '/html/body/div[1]/div/div[1]/div/div[2]/button[1]'))
+                botao_download = WebDriverWait(navegador, 5).until(
+                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[1]/div/div[2]/button[1]'))
                 )
                 botao_download.click()
                 st.session_state.files_saved += 1
-                time.sleep(3)
+                time.sleep(1)
             except Exception:
                 st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
                 continue
 
-            # Verifica se o arquivo foi baixado
             downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
             new_file_path = os.path.join(download_path, new_file_name)
             os.rename(os.path.join(download_path, downloaded_file), new_file_path)
-            
-            # Adiciona o caminho do novo arquivo à lista
+
             st.session_state.downloaded_files.append(new_file_path)
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
@@ -112,9 +109,11 @@ def main():
     st.title("Download de XML")
 
     manual_keys = st.text_area("Insira as chaves de acesso (uma por linha):", key="manual_keys")
-    
-    # Define o caminho padrão de downloads
-    default_download_path = os.path.join(os.path.expanduser("~"), "Downloads")
+
+    # Configura o caminho padrão para a pasta Downloads
+    default_download_path = os.path.join(os.path.expanduser("~"), "Downloads", "XML_Downloads")
+    os.makedirs(default_download_path, exist_ok=True)  # Garante que a pasta exista
+
     download_path = st.text_input("Informe o caminho de salvamento do XML:", value=default_download_path)
 
     start_button = st.button("Iniciar Download")
