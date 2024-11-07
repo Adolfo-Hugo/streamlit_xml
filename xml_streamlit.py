@@ -1,106 +1,68 @@
-import streamlit as st
 import os
 import time
-import undetected_chromedriver as uc  # Importando undetected_chromedriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import streamlit as st
+from playwright.sync_api import sync_playwright
 
-# Função para download de XML com barra de progresso atualizada em tempo real
-def download_xml(manual_keys, download_path):
+def download_xml_with_playwright(manual_keys, download_path):
     if 'is_stopped' not in st.session_state:
         st.session_state.is_stopped = False
-    if 'current_index' not in st.session_state:
-        st.session_state.current_index = 0
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
 
-    # Caminho para o ChromeDriver armazenado no GitHub
-    chrome_driver_path = os.path.join(os.getcwd(), 'https://github.com/Adolfo-Hugo/streamlit_xml/blob/main/chrome.exe')
-    os.chmod(chrome_driver_path, 0o755)  # Tornar o arquivo executável
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)  # Inicia o navegador headless
+        context = browser.new_context()
+        page = context.new_page()
 
-    # Configuração do Chrome com undetected_chromedriver
-    chrome_options = uc.ChromeOptions()
-    prefs = {
-        "download.default_directory": download_path,
-        "download.prompt_for_download": False,
-        "directory_upgrade": True,
-        "safebrowsing.enabled": True
-    }
-    chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+        link = "https://meudanfe.com.br"
+        page.goto(link)
+        time.sleep(5)  # Tempo de espera para garantir o carregamento do site
 
-    navegador = uc.Chrome(driver_executable_path=chrome_driver_path, options=chrome_options)
-    link = "https://meudanfe.com.br"
-    navegador.get(link)
-    time.sleep(5)
+        chaves = manual_keys.strip().split("\n") if manual_keys else []
+        if not chaves:
+            st.warning("Nenhuma chave fornecida. Insira as chaves manualmente.")
+            return
 
-    # Configuração da barra de progresso no Streamlit
-    progress_bar = st.progress(0)
-    progress_text = st.empty()
-    
-    chaves = manual_keys.strip().split("\n") if manual_keys else []
-    if not chaves:
-        st.warning("Nenhuma chave fornecida. Insira as chaves manualmente.")
-        return
-
-    for i, codigo_chave in enumerate(chaves):
-        if st.session_state.is_stopped:
-            st.warning("Automação interrompida.")
-            break
-
-        try:
-            input_element = WebDriverWait(navegador, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/input'))
-            )
-            input_element.send_keys(codigo_chave)
-            time.sleep(2)
-
-            botao_buscar = navegador.find_element(By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/button')
-            botao_buscar.click()
-            time.sleep(2)
+        for i, codigo_chave in enumerate(chaves):
+            if st.session_state.is_stopped:
+                st.warning("Automação interrompida.")
+                break
 
             try:
-                botao_download = WebDriverWait(navegador, 5).until(
-                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[1]/div/div[2]/button[1]'))
-                )
-                botao_download.click()
-                st.session_state.files_saved += 1
+                # Localiza o campo de entrada e insere a chave
+                page.fill('xpath=//*[@id="get-danfe"]/div/div/div[1]/div/div/div/input', codigo_chave)
+                time.sleep(2)
+
+                # Clica no botão de busca
+                page.click('xpath=//*[@id="get-danfe"]/div/div/div[1]/div/div/div/button')
+                time.sleep(2)
+
+                # Aguarda e clica no botão de download
+                if page.locator('xpath=/html/body/div[1]/div/div[1]/div/div[2]/button[1]').is_visible():
+                    page.click('xpath=/html/body/div[1]/div/div[1]/div/div[2]/button[1]')
+                    st.session_state.files_saved += 1
+                    time.sleep(1)
+
+                    # Renomeia o arquivo baixado
+                    downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
+                    new_file_name = f"{codigo_chave}.xml"
+                    os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+                else:
+                    st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
+                    continue
+
+                # Fecha a janela do modal de download
+                page.click('xpath=/html/body/div[1]/div/div[1]/div/div[1]/button')
                 time.sleep(1)
-            except Exception:
-                st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
-                continue
 
-            downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
-            new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+            except Exception as e:
+                st.error(f"Erro ao processar a chave {codigo_chave}: {e}")
 
-            navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
-            time.sleep(1)
-
-        except Exception as e:
-            st.error(f"Erro ao processar a chave {codigo_chave}: {e}")
-
-        # Atualizar barra de progresso e percentual
-        progress_percentage = (i + 1) / len(chaves)
-        progress_bar.progress(progress_percentage)
-        progress_text.text(f"Progresso: {progress_percentage * 100:.2f}% concluído")
-
-    navegador.quit()
+        browser.close()
     st.success("Processo concluído!" if not st.session_state.is_stopped else "Processo interrompido!")
     st.info(f"Número total de arquivos salvos: {st.session_state.files_saved}")
 
-# Função para limpar a entrada e a barra de progresso
-def clear_input():
-    st.session_state.manual_keys = ""
-    st.session_state.is_stopped = False
-    st.session_state.files_saved = 0
-    st.session_state.current_index = 0
-    st.empty()  # Limpar o campo de progresso
-
-# Função principal
+# Função principal para a interface Streamlit
 def main():
     st.title("Download de XML")
 
@@ -109,18 +71,21 @@ def main():
 
     start_button = st.button("Iniciar Download")
     stop_button = st.button("Interromper", on_click=lambda: toggle_stop())
-    clear_button = st.button("Limpar", on_click=clear_input)  # Botão de limpar
+    clear_button = st.button("Limpar", on_click=clear_input)
 
     if start_button:
         st.session_state.is_stopped = False
-        st.session_state.current_index = 0
-        st.session_state.files_saved = 0
-        download_xml(manual_keys, download_path)
+        download_xml_with_playwright(manual_keys, download_path)
 
     st.markdown("<div style='text-align: right;'>Criado por Hugo Silva.</div>", unsafe_allow_html=True)
 
 def toggle_stop():
     st.session_state.is_stopped = True
+
+def clear_input():
+    st.session_state.manual_keys = ""
+    st.session_state.is_stopped = False
+    st.session_state.files_saved = 0
 
 if __name__ == "__main__":
     main()
