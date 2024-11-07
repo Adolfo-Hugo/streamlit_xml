@@ -17,6 +17,8 @@ def download_xml(manual_keys, download_path):
         st.session_state.current_index = 0
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
+    if 'downloaded_files' not in st.session_state:
+        st.session_state.downloaded_files = []
 
     # Configuração do Chrome
     chrome_options = webdriver.ChromeOptions()
@@ -75,6 +77,8 @@ def download_xml(manual_keys, download_path):
             downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
             os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+
+            st.session_state.downloaded_files.append(new_file_path)
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
