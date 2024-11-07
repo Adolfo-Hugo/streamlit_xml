@@ -17,6 +17,8 @@ def download_xml(manual_keys, download_path):
         st.session_state.current_index = 0
     if 'files_saved' not in st.session_state:
         st.session_state.files_saved = 0
+    if 'downloaded_files' not in st.session_state:
+        st.session_state.downloaded_files = []
 
     # Configuração do Chrome
     chrome_options = webdriver.ChromeOptions()
@@ -27,7 +29,6 @@ def download_xml(manual_keys, download_path):
         "safebrowsing.enabled": True
     }
     chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
@@ -74,7 +75,11 @@ def download_xml(manual_keys, download_path):
 
             downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
             new_file_name = f"{codigo_chave}.xml"
-            os.rename(os.path.join(download_path, downloaded_file), os.path.join(download_path, new_file_name))
+            new_file_path = os.path.join(download_path, new_file_name)
+            os.rename(os.path.join(download_path, downloaded_file), new_file_path)
+            
+            # Adiciona o arquivo baixado à lista para exibir botão de download
+            st.session_state.downloaded_files.append(new_file_path)
 
             navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
             time.sleep(1)
@@ -91,12 +96,19 @@ def download_xml(manual_keys, download_path):
     st.success("Processo concluído!" if not st.session_state.is_stopped else "Processo interrompido!")
     st.info(f"Número total de arquivos salvos: {st.session_state.files_saved}")
 
+    # Exibir botões de download para cada XML baixado
+    for file_path in st.session_state.downloaded_files:
+        file_name = os.path.basename(file_path)
+        with open(file_path, "rb") as file:
+            st.download_button(label=f"Baixar {file_name}", data=file, file_name=file_name, mime="application/xml")
+
 # Função para limpar a entrada e a barra de progresso
 def clear_input():
     st.session_state.manual_keys = ""
     st.session_state.is_stopped = False
     st.session_state.files_saved = 0
     st.session_state.current_index = 0
+    st.session_state.downloaded_files = []
     st.empty()  # Limpar o campo de progresso
 
 # Função principal
