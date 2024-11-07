@@ -32,7 +32,8 @@ def download_xml(manual_keys, download_path):
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
-    navegador = webdriver.Chrome(options=chrome_options)
+    navegador = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
     link = "https://meudanfe.com.br"
     navegador.get(link)
     time.sleep(5)
