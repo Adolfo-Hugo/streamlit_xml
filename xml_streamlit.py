@@ -2,6 +2,8 @@ import os
 import requests
 import streamlit as st
 from time import time
+from tkinter import Tk
+from tkinter.filedialog import askdirectory
 
 # URL base da API
 BASE_URL = "https://ws.meudanfe.com/api/v1/get/nfe/"
@@ -11,17 +13,18 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
-# Função para verificar ou criar o diretório
-def verificar_ou_criar_diretorio(caminho):
+# Função para abrir janela para seleção de pasta
+def selecionar_diretorio():
     """
-    Verifica se o diretório existe, e o cria caso não exista.
-    Retorna o caminho absoluto do diretório.
+    Abre uma janela Tkinter para seleção de diretório.
+    Retorna o caminho do diretório selecionado.
     """
-    if not os.path.exists(caminho):
-        try:
-            os.makedirs(caminho)
-        except Exception as e:
-            raise Exception(f"Erro ao criar o diretório: {e}")
+    root = Tk()
+    root.withdraw()  # Esconde a janela principal do Tkinter
+    caminho = askdirectory(title="Selecione a pasta para salvar os arquivos")
+    root.destroy()
+    if not caminho:
+        raise Exception("Nenhum diretório selecionado!")
     return caminho
 
 # Função para consultar a nota fiscal
@@ -57,17 +60,22 @@ st.subheader("Insira os IDs das notas fiscais")
 # Entrada de IDs
 ids_input = st.text_area("IDs das notas fiscais (um por linha)", height=150)
 
-# Seleção de diretório
-diretorio = st.text_input("Diretório para salvar os arquivos XML", os.getcwd())
+# Botão para selecionar o diretório
+if st.button("Selecionar Diretório"):
+    try:
+        diretorio = selecionar_diretorio()
+        st.success(f"Diretório selecionado: {diretorio}")
+    except Exception as e:
+        st.error(f"Erro: {e}")
 
 # Botão para iniciar o processamento
 if st.button("Processar"):
     if not ids_input.strip():
         st.warning("Por favor, insira os IDs das notas fiscais.")
+    elif 'diretorio' not in locals():
+        st.warning("Por favor, selecione o diretório para salvar os arquivos.")
     else:
         try:
-            # Verifica ou cria o diretório
-            diretorio_absoluto = verificar_ou_criar_diretorio(diretorio)
             ids = list(set(ids_input.strip().split("\n")))
             total_ids = len(ids)
             st.info(f"Iniciando o processamento de {total_ids} notas fiscais...")
@@ -81,7 +89,7 @@ if st.button("Processar"):
             for i, id_nota in enumerate(ids, start=1):
                 try:
                     consultar_nota_fiscal(id_nota)  # Opcional: para validar a nota
-                    baixar_xml(id_nota, diretorio_absoluto)
+                    baixar_xml(id_nota, diretorio)
                     sucesso += 1
                 except Exception as e:
                     st.error(f"Erro no ID {id_nota}: {e}")
@@ -92,6 +100,6 @@ if st.button("Processar"):
             fim = time()
             st.success(f"Processamento concluído! {sucesso}/{total_ids} arquivos baixados.")
             st.write(f"Tempo total: {fim - inicio:.2f} segundos")
-            st.write(f"Arquivos salvos em: {diretorio_absoluto}")
+            st.write(f"Arquivos salvos em: {diretorio}")
         except Exception as e:
             st.error(f"Erro: {e}")
