@@ -1,135 +1,83 @@
-import streamlit as st
 import os
-import time
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from dotenv import load_dotenv
+import requests
+import streamlit as st
+from time import time
 
-# Função para download de XML com barra de progresso atualizada em tempo real
-def download_xml(manual_keys, download_path):
-    if 'is_stopped' not in st.session_state:
-        st.session_state.is_stopped = False
-    if 'current_index' not in st.session_state:
-        st.session_state.current_index = 0
-    if 'files_saved' not in st.session_state:
-        st.session_state.files_saved = 0
-    if 'downloaded_files' not in st.session_state:
-        st.session_state.downloaded_files = []
+# URL base da API
+BASE_URL = "https://ws.meudanfe.com/api/v1/get/nfe/"
+HEADERS = {
+    "Content-Type": "text/plain;charset=UTF-8",
+    "Origin": "https://www.meudanfe.com.br",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
 
-    # Configuração do Chrome
-    chrome_options = webdriver.ChromeOptions()
-    prefs = {
-        "download.default_directory": download_path,
-        "download.prompt_for_download": False,
-        "directory_upgrade": True,
-        "safebrowsing.enabled": True
-    }
-    chrome_options.add_experimental_option("prefs", prefs)
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+# Função para consultar a nota fiscal
+def consultar_nota_fiscal(id_nota_fiscal):
+    url = f"{BASE_URL}data/MEUDANFE/{id_nota_fiscal}"
+    try:
+        response = requests.post(url, headers=HEADERS, data="{}")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Erro ao consultar: {response.status_code}")
+    except Exception as e:
+        raise Exception(f"Erro na consulta da nota fiscal {id_nota_fiscal}: {e}")
 
-    navegador = webdriver.Chrome(options=chrome_options)
-    link = "https://meudanfe.com.br"
-    navegador.get(link)
-    time.sleep(5)
+# Função para baixar o XML
+def baixar_xml(id_nota_fiscal, diretorio):
+    url = f"{BASE_URL}xml/{id_nota_fiscal}"
+    try:
+        response = requests.post(url, headers=HEADERS, data="{}")
+        if response.status_code == 200:
+            filepath = os.path.join(diretorio, f"{id_nota_fiscal}.xml")
+            with open(filepath, "wb") as file:
+                file.write(response.content)
+        else:
+            raise Exception(f"Erro ao baixar: {response.status_code}")
+    except Exception as e:
+        raise Exception(f"Erro ao baixar XML {id_nota_fiscal}: {e}")
 
-    # Configuração da barra de progresso no Streamlit
-    progress_bar = st.progress(0)
-    progress_text = st.empty()
-    
-    chaves = manual_keys.strip().split("\n") if manual_keys else []
-    if not chaves:
-        st.warning("Nenhuma chave fornecida. Insira as chaves manualmente.")
-        return
+# Interface Streamlit
+st.title("Consulta e Download de XML de NF-e")
+st.subheader("Insira os IDs das notas fiscais")
 
-    for i, codigo_chave in enumerate(chaves):
-        if st.session_state.is_stopped:
-            st.warning("Automação interrompida.")
-            break
+# Entrada de IDs
+ids_input = st.text_area("IDs das notas fiscais (um por linha)", height=150)
 
-        try:
-            input_element = WebDriverWait(navegador, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/input'))
-            )
-            input_element.send_keys(codigo_chave)
-            time.sleep(2)
+# Seleção de diretório
+diretorio = st.text_input("Diretório para salvar os arquivos XML", os.getcwd())
+if not os.path.exists(diretorio):
+    st.warning("O diretório especificado não existe!")
 
-            botao_buscar = navegador.find_element(By.XPATH, '//*[@id="get-danfe"]/div/div/div[1]/div/div/div/button')
-            botao_buscar.click()
-            time.sleep(2)
+# Botão para iniciar o processamento
+if st.button("Processar"):
+    if not ids_input.strip():
+        st.warning("Por favor, insira os IDs das notas fiscais.")
+    elif not os.path.exists(diretorio):
+        st.warning("O diretório especificado não existe.")
+    else:
+        ids = list(set(ids_input.strip().split("\n")))
+        total_ids = len(ids)
+        st.info(f"Iniciando o processamento de {total_ids} notas fiscais...")
 
+        # Progresso
+        progress_bar = st.progress(0)
+        sucesso = 0
+        inicio = time()
+
+        # Processa cada ID
+        for i, id_nota in enumerate(ids, start=1):
             try:
-                botao_download = WebDriverWait(navegador, 5).until(
-                    EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div[1]/div/div[2]/button[1]'))
-                )
-                botao_download.click()
-                st.session_state.files_saved += 1
-                time.sleep(1)
-            except Exception:
-                st.warning(f"Captcha não resolvido para a chave {codigo_chave}. Pulando para a próxima chave.")
-                continue
+                consultar_nota_fiscal(id_nota)  # Opcional: para validar a nota
+                baixar_xml(id_nota, diretorio)
+                sucesso += 1
+            except Exception as e:
+                st.error(f"Erro no ID {id_nota}: {e}")
 
-            downloaded_file = max([f for f in os.listdir(download_path)], key=lambda x: os.path.getctime(os.path.join(download_path, x)))
-            new_file_name = f"{codigo_chave}.xml"
-            new_file_path = os.path.join(download_path, new_file_name)
-            os.rename(os.path.join(download_path, downloaded_file), new_file_path)
+            # Atualiza progresso
+            progress_bar.progress(i / total_ids)
 
-            st.session_state.downloaded_files.append(new_file_path)
-
-            navegador.find_element(By.XPATH, '/html/body/div[1]/div/div[1]/div/div[1]/button').click()
-            time.sleep(1)
-
-        except Exception as e:
-            st.error(f"Erro ao processar a chave {codigo_chave}: {e}")
-
-        # Atualizar barra de progresso e percentual
-        progress_percentage = (i + 1) / len(chaves)
-        progress_bar.progress(progress_percentage)
-        progress_text.text(f"Progresso: {progress_percentage * 100:.2f}% concluído")
-
-    navegador.quit()
-    st.success("Processo concluído!" if not st.session_state.is_stopped else "Processo interrompido!")
-    st.info(f"Número total de arquivos salvos: {st.session_state.files_saved}")
-
-# Função para limpar a entrada e a barra de progresso
-def clear_input():
-    st.session_state.manual_keys = ""
-    st.session_state.is_stopped = False
-    st.session_state.files_saved = 0
-    st.session_state.current_index = 0
-    st.empty()  # Limpar o campo de progresso
-
-# Função principal
-def main():
-    st.title("Download de XML")
-
-    manual_keys = st.text_area("Insira as chaves de acesso (uma por linha):", key="manual_keys")
-
-    # Configura o caminho padrão para a pasta Downloads
-    default_download_path = os.path.join(os.path.expanduser("~"), "Downloads", "XML_Downloads")
-    os.makedirs(default_download_path, exist_ok=True)  # Garante que a pasta exista
-
-    download_path = st.text_input("Informe o caminho de salvamento do XML:", value=default_download_path)
-
-    start_button = st.button("Iniciar Download")
-    stop_button = st.button("Interromper", on_click=lambda: toggle_stop())
-    clear_button = st.button("Limpar", on_click=clear_input)
-
-    if start_button:
-        st.session_state.is_stopped = False
-        st.session_state.current_index = 0
-        st.session_state.files_saved = 0
-        download_xml(manual_keys, download_path)
-
-    st.markdown("<div style='text-align: right;'>Criado por Hugo Silva.</div>", unsafe_allow_html=True)
-
-def toggle_stop():
-    st.session_state.is_stopped = True
-
-if __name__ == "__main__":
-    main()
+        fim = time()
+        st.success(f"Processamento concluído! {sucesso}/{total_ids} arquivos baixados.")
+        st.write(f"Tempo total: {fim - inicio:.2f} segundos")
+        st.write(f"Arquivos salvos em: {diretorio}")
